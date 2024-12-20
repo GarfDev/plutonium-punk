@@ -1,8 +1,10 @@
 name: plutonium_punk
+publish_to: none
 
 environment:
-  sdk: '^3.6.0'
+  sdk: '>=3.0.0 <4.0.0'
 
 dev_dependencies:
-  melos: ^6.2.0
+  melos: ^6.1.0
 
+license: MIT

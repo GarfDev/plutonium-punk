@@ -10,9 +10,24 @@ command:
 
 scripts:
   analyze:
-    exec: flutter analyze .
-  outdated:
-    exec: flutter pub outdated
+    exec: flutter analyze --fatal-infos
+    description: Run `flutter analyze` for all packages.
+
   test:
     exec: flutter test
+    description: Run `flutter test` for a specific package.
+    packageFilters:
+      dirExists:
+        - test
 
+  format:
+    exec: dart format . --fix
+    description: Run `dart format` for all packages.
+
+  format-check:
+    exec: dart format . --fix --set-exit-if-changed
+    description: Run `dart format` checks for all packages.
+
+  fix:
+    exec: dart fix . --apply
+    description: Run `dart fix` for all packages.
