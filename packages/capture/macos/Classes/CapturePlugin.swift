@@ -4,13 +4,15 @@ import Cocoa
 import FlutterMacOS
 
 public class CapturePlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
-  final var eventSink: FlutterEventSink?
-  private var audioQueue: AudioQueueRef?
+    final var eventSink: FlutterEventSink?
+    private var audioQueue: AudioQueueRef?
 
     // MARK: - Plugin Registration
     public static func register(with registrar: FlutterPluginRegistrar) {
-        let methodChannel = FlutterMethodChannel(name: "audio_capture/method", binaryMessenger: registrar.messenger)
-        let eventChannel = FlutterEventChannel(name: "audio_capture/events", binaryMessenger: registrar.messenger)
+        let methodChannel = FlutterMethodChannel(
+            name: "capture/method", binaryMessenger: registrar.messenger)
+        let eventChannel = FlutterEventChannel(
+            name: "capture/events", binaryMessenger: registrar.messenger)
         let instance = CapturePlugin()
         registrar.addMethodCallDelegate(instance, channel: methodChannel)
         eventChannel.setStreamHandler(instance)
@@ -30,9 +32,10 @@ public class CapturePlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         }
     }
 
-
     // MARK: - EventChannel Stream Handler
-    public func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
+    public func onListen(
+        withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink
+    ) -> FlutterError? {
         self.eventSink = events
         return nil
     }
@@ -60,8 +63,8 @@ public class CapturePlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         // Pass `self` as user data
         AudioQueueNewInput(
             &audioFormat,
-            audioQueueCallback, // Use global callback
-            Unmanaged.passUnretained(self).toOpaque(), // Pass `self` context
+            audioQueueCallback,  // Use global callback
+            Unmanaged.passUnretained(self).toOpaque(),  // Pass `self` context
             nil,
             nil,
             0,
@@ -105,11 +108,20 @@ func audioQueueCallback(
     let plugin = Unmanaged<CapturePlugin>.fromOpaque(userData).takeUnretainedValue()
 
     if let eventSink = plugin.eventSink {
-        let data = Data(bytes: inBuffer.pointee.mAudioData, count: Int(inBuffer.pointee.mAudioDataByteSize))
-        eventSink(data)
+        // Convert raw audio data to Int16 samples
+        let bufferPointer = inBuffer.pointee.mAudioData.bindMemory(
+            to: Int16.self, capacity: Int(inBuffer.pointee.mAudioDataByteSize) / 2)
+        let buffer = UnsafeBufferPointer(
+            start: bufferPointer, count: Int(inBuffer.pointee.mAudioDataByteSize) / 2)
+
+        // Map amplitudes to a normalized range (e.g., -1.0 to 1.0)
+        let amplitudes = buffer.map { NSNumber(value: Float($0) / Float(Int16.max)) }
+
+        // Send the normalized amplitudes to Flutter
+        plugin.eventSink?(amplitudes)
+
     }
 
+    // Re-enqueue the input buffer
     AudioQueueEnqueueBuffer(inAQ, inBuffer, 0, nil)
-
 }
-

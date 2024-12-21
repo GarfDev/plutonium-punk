@@ -6,9 +6,9 @@ import 'package:flutter/services.dart';
 class EventChannelCapture extends CapturePlatform {
   final EventChannel eventChannel = const EventChannel('capture/events');
 
-  Stream<Uint8List> get audioStream {
+  Stream<List<double>> get audioStream {
     return eventChannel
         .receiveBroadcastStream()
-        .map((event) => event as Uint8List);
+        .map((event) => (event as List).map((e) => e as double).toList());
   }
 }

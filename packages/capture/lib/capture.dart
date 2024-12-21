@@ -1,15 +1,19 @@
 import 'package:flutter/services.dart';
 
 class Capture {
-  static const MethodChannel _methodChannel =
-      MethodChannel('audio_capture/method');
-  static const EventChannel _eventChannel =
-      EventChannel('audio_capture/events');
+  static const MethodChannel _methodChannel = MethodChannel('capture/method');
+  static const EventChannel _eventChannel = EventChannel('capture/events');
 
   Stream<Uint8List> get audioStream {
     return _eventChannel
         .receiveBroadcastStream()
         .map((event) => event as Uint8List);
+  }
+
+  Stream<List<double>> get amplitudeStream {
+    return _eventChannel
+        .receiveBroadcastStream()
+        .map((event) => (event as List).map((e) => e as double).toList());
   }
 
   Future<void> startAudioCapture() async {
