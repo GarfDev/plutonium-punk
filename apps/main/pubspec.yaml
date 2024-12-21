@@ -30,8 +30,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  audio_recorder:
-    path: ../../packages/audio_recorder
+  capture:
+    path: ../../packages/capture
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
