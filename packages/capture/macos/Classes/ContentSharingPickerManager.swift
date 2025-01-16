@@ -65,6 +65,7 @@ class ContentSharingPickerManager: NSObject, SCContentSharingPickerObserver {
 
         var pickerConfig = SCContentSharingPickerConfiguration()
         pickerConfig.allowsChangingSelectedContent = true
+        pickerConfig.allowedPickerModes = [.multipleWindows]
 
         picker.setConfiguration(pickerConfig, for: stream)
     }

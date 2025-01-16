@@ -77,3 +77,5 @@ packages/**/pubspec.lock
 .obfuscation_map
 .symbols
 .debug
+
+.env

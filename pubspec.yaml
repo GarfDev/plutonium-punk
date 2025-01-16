@@ -8,3 +8,5 @@ dev_dependencies:
   melos: ^6.1.0
 
 license: MIT
+dependencies:
+  stream_transform: ^2.1.1

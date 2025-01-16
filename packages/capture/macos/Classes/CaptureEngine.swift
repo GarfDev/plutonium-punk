@@ -47,7 +47,7 @@ class CaptureEngine: NSObject, @unchecked Sendable, SCRecordingOutputDelegate {
     @MainActor func startCapture(
         configuration: SCStreamConfiguration, filter: SCContentFilter
     ) -> AsyncThrowingStream<CapturedFrame, any Error> {
-        let config = configuration
+        let config = SCStreamConfiguration()
         let contentFilter = filter
 
         return AsyncThrowingStream<CapturedFrame, any Error> { continuation in
@@ -67,6 +67,7 @@ class CaptureEngine: NSObject, @unchecked Sendable, SCRecordingOutputDelegate {
                 try stream?.addStreamOutput(
                     streamOutput!, type: .audio, sampleHandlerQueue: audioSampleBufferQueue)
 
+                
                 let recordingConfiguration = SCRecordingOutputConfiguration()
 
                 let recordingOutput = SCRecordingOutput(
@@ -235,5 +236,24 @@ private class CaptureEngineStreamOutput: NSObject, SCStreamOutput, SCStreamDeleg
                 standardFormatWithSampleRate: absd.mSampleRate, channels: absd.mChannelsPerFrame)
         else { return nil }
         return AVAudioPCMBuffer(pcmFormat: format, bufferListNoCopy: audioBufferList)
+    }
+}
+
+
+
+@available(macOS 15.0, *)
+private class StubVideoOutput: NSObject, SCStreamOutput, SCStreamDelegate {
+
+    nonisolated func stream(_ stream: SCStream, didStopWithError error: Error) {
+        // Just log if video capture stops or if an error occurs
+        print("StubVideoOutput video stream stopped with error: \(error.localizedDescription)")
+    }
+
+    nonisolated func stream(
+        _ stream: SCStream,
+        didOutputSampleBuffer sampleBuffer: CMSampleBuffer,
+        of outputType: SCStreamOutputType
+    ) {
+        // Do nothing — discard incoming video frames
     }
 }
