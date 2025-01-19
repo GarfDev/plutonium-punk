@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:capture/capture.dart';
 import 'package:deepgram_speech_to_text/deepgram_speech_to_text.dart';
+import 'audio_capture_debug.dart';
 
 const API_KEY = 'fed7fb01a64f39523fc8876fda59076b22dcf116';
 
@@ -36,15 +37,9 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     deepgram = Deepgram(API_KEY, baseQueryParams: STREAM_PARAMS);
-    listener = deepgram.listen.liveListener(capture.rawAudioStream);
 
-    capture.rawAudioStream.listen((chunk) {
-      print('Received audio chunk: length=${chunk.length}');
-      if (chunk.isNotEmpty) {
-        // Print the first 8 bytes, for example
-        print('First few bytes: ${chunk.take(8).toList()}');
-      }
-    });
+    listener = deepgram.listen.liveListener(
+        capture.rawAudioStream.map((event) => event as Uint8List));
 
     /// 1. Listen to `capture.rawAudioStream` and convert the raw bytes into 16-bit signed samples.
     capture.rawAudioStream.listen((chunk) {
@@ -94,46 +89,47 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(title: Text('Audio Visualizer & Transcription')),
-        body: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                "CAPTION: $caption",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Expanded(
-              child: AudioVisualizer(audioData: _audioData),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: () async {
-                    await capture.startAudioCapture();
-                    subscription.resume();
-                    await listener.start();
-                    print("Capture started");
-                  },
-                  child: Text('Start Capture'),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    await capture.stopAudioCapture();
-                    subscription.cancel();
-                    await listener.close();
-                    print("Capture stopped");
-                  },
-                  child: Text('Stop Capture'),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-            ),
-          ],
-        ),
+        body: AudioCaptureDebug(),
+        // body: Column(
+        //   children: [
+        //     Padding(
+        //       padding: const EdgeInsets.all(16.0),
+        //       child: Text(
+        //         "CAPTION: $caption",
+        //         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        //       ),
+        //     ),
+        //     Expanded(
+        //       child: AudioVisualizer(audioData: _audioData),
+        //     ),
+        //     Row(
+        //       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        //       children: [
+        //         ElevatedButton(
+        //           onPressed: () async {
+        //             await capture.startAudioCapture();
+        //             subscription.resume();
+        //             await listener.start();
+        //             print("Capture started");
+        //           },
+        //           child: Text('Start Capture'),
+        //         ),
+        //         ElevatedButton(
+        //           onPressed: () async {
+        //             await capture.stopAudioCapture();
+        //             subscription.cancel();
+        //             await listener.close();
+        //             print("Capture stopped");
+        //           },
+        //           child: Text('Stop Capture'),
+        //         ),
+        //       ],
+        //     ),
+        //     Padding(
+        //       padding: const EdgeInsets.all(16.0),
+        //     ),
+        //   ],
+        // ),
       ),
     );
   }
