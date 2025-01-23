@@ -11,7 +11,7 @@ class Capture {
   Stream<Uint8List> get rawAudioStream =>
       _rawAudioEventChannel.receiveBroadcastStream().map((event) {
         if (event is Uint8List) {
-          return event;
+          return event; // raw PCM
         } else {
           throw FormatException("Invalid audio data received");
         }
@@ -41,36 +41,31 @@ class Capture {
   Uint8List buildWavHeader({
     required int totalAudioSamples,
     int sampleRate = 48000,
-    int bitsPerSample = 32,
-    int channels = 2,
+    int bitsPerSample = 16, // Updated for 16-bit PCM
+    int channels = 1, // Updated for mono audio
   }) {
     final byteRate = sampleRate * channels * bitsPerSample ~/ 8;
     final blockAlign = channels * bitsPerSample ~/ 8;
-
-    // Total data size
     final dataSize = totalAudioSamples * channels * (bitsPerSample ~/ 8);
     final fileSize = 44 - 8 + dataSize;
 
     final buffer = BytesBuilder();
-
-    // RIFF header
-    buffer.add(asciiStringBytes('RIFF')); // ChunkID
-    buffer.add(_intToBytes(fileSize, 4)); // ChunkSize
-    buffer.add(asciiStringBytes('WAVE')); // Format
-
-    // fmt sub-chunk
-    buffer.add(asciiStringBytes('fmt ')); // Subchunk1ID
-    buffer.add(_intToBytes(16, 4)); // Subchunk1Size (16 for PCM)
-    buffer.add(_intToBytes(3, 2)); // AudioFormat (3 = Float)
-    buffer.add(_intToBytes(channels, 2)); // NumChannels
-    buffer.add(_intToBytes(sampleRate, 4)); // SampleRate
-    buffer.add(_intToBytes(byteRate, 4)); // ByteRate
-    buffer.add(_intToBytes(blockAlign, 2)); // BlockAlign
-    buffer.add(_intToBytes(bitsPerSample, 2)); // BitsPerSample
-
-    // data sub-chunk
-    buffer.add(asciiStringBytes('data')); // Subchunk2ID
-    buffer.add(_intToBytes(dataSize, 4)); // Subchunk2Size
+    // RIFF
+    buffer.add(asciiStringBytes('RIFF'));
+    buffer.add(_intToBytes(fileSize, 4));
+    buffer.add(asciiStringBytes('WAVE'));
+    // fmt
+    buffer.add(asciiStringBytes('fmt '));
+    buffer.add(_intToBytes(16, 4));
+    buffer.add(_intToBytes(1, 2)); // 1 = PCM integer
+    buffer.add(_intToBytes(channels, 2));
+    buffer.add(_intToBytes(sampleRate, 4));
+    buffer.add(_intToBytes(byteRate, 4));
+    buffer.add(_intToBytes(blockAlign, 2));
+    buffer.add(_intToBytes(bitsPerSample, 2));
+    // data
+    buffer.add(asciiStringBytes('data'));
+    buffer.add(_intToBytes(dataSize, 4));
 
     return buffer.toBytes();
   }
@@ -95,8 +90,9 @@ class Capture {
   /// Save raw PCM data to a WAV file
   Future<void> saveRawPCMToWav(Uint8List pcmData, String filePath,
       {int sampleRate = 48000,
-      int bitsPerSample = 32,
-      int channels = 2}) async {
+      int bitsPerSample = 16, // Updated for 16-bit PCM
+      int channels = 1}) async {
+    // Updated for mono audio
     final totalAudioSamples =
         pcmData.length ~/ (channels * (bitsPerSample ~/ 8));
     final wavHeader = buildWavHeader(

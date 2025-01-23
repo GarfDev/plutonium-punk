@@ -76,38 +76,47 @@ class _AudioCaptureDebugState extends State<AudioCaptureDebug> {
         _isCapturing = false;
       });
 
-      // Write out a WAV file
-      final totalSamples =
-          _pcmBuffer.length ~/ (2 * (32 ~/ 8)); // 2 channels, 32-bit float
+      // Each sample is 16-bit (2 bytes), and the audio is mono (1 channel)
+      final totalSamples = _pcmBuffer.length ~/ 2; // Adjusted for 16-bit mono
       final header = capture.buildWavHeader(
         totalAudioSamples: totalSamples,
         sampleRate: 48000,
-        bitsPerSample: 32,
-        channels: 2,
+        bitsPerSample: 16, // 16-bit PCM
+        channels: 1, // mono
       );
 
-      final durationSeconds = totalSamples / 48000;
+      final durationSeconds = totalSamples / 48000.0;
       print("Audio duration: $durationSeconds seconds");
 
-      // Combine header + PCM data into a single Uint8List
+      // Combine header + PCM data
       final wavBytes = BytesBuilder();
       wavBytes.add(header);
       wavBytes.add(_pcmBuffer.toBytes());
 
-      // Save to a file in the system temp directory
+      // Save to a file in system temp
       final directory = await Directory.systemTemp.createTemp('audio_test');
       final filePath = '${directory.path}/test_audio.wav';
       final file = File(filePath);
       await file.writeAsBytes(wavBytes.toBytes());
 
       print('WAV file saved to: $filePath');
-      print('You can open this file in Audacity or another audio player.');
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('WAV saved to: $filePath')),
       );
 
-      // Clear PCM buffer for the next capture session
+      // Automatically open file location
+      if (Platform.isWindows) {
+        await Process.run('explorer', ['/select,', filePath]);
+      } else if (Platform.isMacOS) {
+        await Process.run('open', ['-R', filePath]);
+      } else if (Platform.isLinux) {
+        await Process.run('xdg-open', [directory.path]);
+      } else {
+        // Mobile platforms can use the `open_file` package
+        print("Auto-opening is not supported on this platform.");
+      }
+
+      // Clear buffer for next session
       _pcmBuffer.clear();
     } catch (e) {
       print("Error stopping capture or saving file: $e");
