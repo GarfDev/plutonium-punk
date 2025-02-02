@@ -1,16 +1,15 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-// Import your local services
+// Import local services
 import 'package:main/services/audio.dart';
 import 'package:main/services/deepgram.dart';
 
-// Import the new AudioVisualizer widget
+// Import widgets
 import 'widgets/audio_visualizer.dart';
 
-const String DEEPGRAM_API_KEY = 'fed7fb01a64f39523fc8876fda59076b22dcf116';
+// Import constants
+import 'constants/secrects.dart';
 
 void main() {
   final audioService = AudioService();
