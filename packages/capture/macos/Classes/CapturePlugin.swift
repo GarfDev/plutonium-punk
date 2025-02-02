@@ -8,11 +8,12 @@ import Cocoa
 import FlutterMacOS
 import ScreenCaptureKit
 
-/// Marked @available(macOS 12.3, *) because ScreenCaptureKit requires macOS 12.3+
 @available(macOS 15.0, *)
 public class CapturePlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
 
     // MARK: - Properties
+    private var audioDataBuffer = Data()
+    private let bufferSizeThreshold = 1024 * 8  // Example threshold size
 
     private var rawAudioEventSink: FlutterEventSink?
     private var currentStream: SCStream?
@@ -152,9 +153,10 @@ public class CapturePlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
             scStream = streamFromPicker
         } else {
             let config = SCStreamConfiguration()
-            
+
             config.capturesAudio = true
             config.showsCursor = false
+            config.captureMicrophone = true
 
             // For stereo audio:
             config.sampleRate = 48000
@@ -165,7 +167,7 @@ public class CapturePlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
         }
 
         let output = CaptureStreamOutput(plugin: self)
-        
+
         currentOutput = output
         currentStream = scStream
 
@@ -203,146 +205,14 @@ public class CapturePlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     }
 
     // MARK: - Sending Audio to Flutter
-    internal func sendRawAudioData(_ data: Data) {
-        guard let sink = rawAudioEventSink else {
-            print("rawAudioEventSink is not set.")
-            return
+    func sendRawAudioData(_ data: Data) {
+        guard let sink = rawAudioEventSink else { return }
+        audioDataBuffer.append(data)
+
+        if audioDataBuffer.count >= bufferSizeThreshold {
+            sink(FlutterStandardTypedData(bytes: audioDataBuffer))
+            audioDataBuffer.removeAll(keepingCapacity: true)
         }
-
-
-
-        // Send the raw audio data as a Uint8List to Flutter
-        sink(FlutterStandardTypedData(bytes: data))
-    }
-
-    
-
-}
-
-// MARK: - CaptureStreamOutput (SCStreamOutput)
-
-@available(macOS 15.0, *)
-private class CaptureStreamOutput: NSObject, SCStreamOutput, SCStreamDelegate {
-    private weak var plugin: CapturePlugin?
-
-    init(plugin: CapturePlugin) {
-        self.plugin = plugin
-    }
-
-    nonisolated func stream(_ stream: SCStream, didStopWithError error: Error) {
-        print("SCStream stopped with error: \(error.localizedDescription)")
-    }
-    
-    // Creates an AVAudioPCMBuffer instance on which to perform an average and peak audio level calculation.
-    private nonisolated func createPCMBuffer(for sampleBuffer: CMSampleBuffer) -> AVAudioPCMBuffer? {
-        // Validate CMSampleBuffer
-        guard CMSampleBufferIsValid(sampleBuffer) else {
-            print("Invalid CMSampleBuffer.")
-            return nil
-        }
-
-        // Extract AudioBufferList safely
-        var audioBufferListCopy: AudioBufferList?
-        do {
-            try sampleBuffer.withAudioBufferList { audioBufferList, _ in
-                audioBufferListCopy = audioBufferList.unsafePointer.pointee
-            }
-        } catch {
-            print("Error accessing AudioBufferList: \(error)")
-            return nil
-        }
-
-        guard var audioBufferList = audioBufferListCopy else {
-            print("Failed to retrieve AudioBufferList.")
-            return nil
-        }
-
-        // Validate AudioBufferList properties
-        let bufferCount = Int(audioBufferList.mNumberBuffers)
-        if bufferCount <= 0 || bufferCount > 10 { // Limit to catch corruption
-            print("Invalid buffer count: \(bufferCount).")
-            return nil
-        }
-        print("AudioBufferList contains \(bufferCount) buffer(s).")
-
-        // Retrieve and validate format description
-        guard let absd = sampleBuffer.formatDescription?.audioStreamBasicDescription else {
-            print("Invalid or missing format description.")
-            return nil
-        }
-
-        print("Sample Rate: \(absd.mSampleRate), Channels: \(absd.mChannelsPerFrame)")
-
-        guard bufferCount == Int(absd.mChannelsPerFrame) else {
-            print("Mismatch: Number of buffers (\(bufferCount)) does not match channel count (\(absd.mChannelsPerFrame)).")
-            return nil
-        }
-
-        // Create AVAudioFormat
-        guard let format = AVAudioFormat(
-            standardFormatWithSampleRate: absd.mSampleRate,
-            channels: AVAudioChannelCount(absd.mChannelsPerFrame)
-        ) else {
-            print("Failed to create AVAudioFormat.")
-            return nil
-        }
-        
-        // Create AVAudioPCMBuffer
-        guard let pcmBuffer = AVAudioPCMBuffer(pcmFormat: format, bufferListNoCopy: &audioBufferList) else {
-            print("Failed to create AVAudioPCMBuffer.")
-            return nil
-        }
-        
-        let isPCM = pcmBuffer.format.commonFormat == .pcmFormatInt16
-        print("Is 16-bit PCM format: \(isPCM)")
-        print("What format it using: \(pcmBuffer.format.commonFormat)")
-
-
-        return pcmBuffer
-    }
-
-    func convertTo16BitPCM(from buffer: AVAudioPCMBuffer) -> Data? {
-        guard let floatChannelData = buffer.floatChannelData else {
-            print("Failed to get floatChannelData")
-            return nil
-        }
-        
-        let frameLength = Int(buffer.frameLength)
-        let channelCount = Int(buffer.format.channelCount)
-        var pcmData = Data()
-        
-        for channel in 0..<channelCount {
-            let channelData = floatChannelData[channel]
-            for sampleIndex in 0..<frameLength {
-                let floatSample = channelData[sampleIndex]
-                // Scale float [-1.0, 1.0] to 16-bit integer range [-32768, 32767]
-                let intSample = Int16(floatSample * Float(Int16.max))
-                pcmData.append(contentsOf: withUnsafeBytes(of: intSample.littleEndian) { Data($0) })
-            }
-        }
-        
-        return pcmData
-    }
-
-    
-    func stream(
-        _ stream: SCStream,
-        didOutputSampleBuffer sampleBuffer: CMSampleBuffer,
-        of outputType: SCStreamOutputType
-    ) {
-        guard outputType == .audio else { return }
-                
-        let pcmBuffer = createPCMBuffer(for: sampleBuffer)
-        
-        
-    
-        // The data is already 16-bit mono, so send it directly to Flutter
-        guard let pcmBuffer else { return }
-        
-        if let convertedPCMData = convertTo16BitPCM(from: pcmBuffer) {
-            plugin?.sendRawAudioData(convertedPCMData)
-        }
-
     }
 
 }
