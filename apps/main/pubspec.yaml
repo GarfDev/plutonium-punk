@@ -43,6 +43,8 @@ dependencies:
   flutter_dotenv: ^5.2.1
   flutter_sound: ^9.2.13
   just_audio: ^0.9.31
+  system_tray: ^2.0.3
+  tray_manager: ^0.3.2
 
 dev_dependencies:
   flutter_test:
