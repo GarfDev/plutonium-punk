@@ -13,7 +13,7 @@ public class CapturePlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
 
     // MARK: - Properties
     private var audioDataBuffer = Data()
-    private let bufferSizeThreshold = 1024 * 8  // Example threshold size
+    private let bufferSizeThreshold = 1024 * 16  // Example threshold size
 
     private var rawAudioEventSink: FlutterEventSink?
     private var currentStream: SCStream?

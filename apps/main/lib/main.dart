@@ -11,7 +11,12 @@ import 'widgets/audio_visualizer.dart';
 // Import constants
 import 'constants/secrects.dart';
 
-void main() {
+void main() async {
+  // For tray_manager to work smoothly with Flutter,
+  // ensure the binding is initialized first:
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize your services
   final audioService = AudioService();
   final deepgramService = DeepgramService(DEEPGRAM_API_KEY);
 
@@ -77,9 +82,9 @@ class AudioVisualizerScreen extends StatelessWidget {
         ),
 
         // The smooth, wave-like visualization
-        Expanded(
-          child: AudioVisualizer(rawAudioData: rawAudioData),
-        ),
+        // Expanded(
+        //   child: AudioVisualizer(rawAudioData: rawAudioData),
+        // ),
 
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,

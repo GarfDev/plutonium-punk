@@ -33,7 +33,6 @@ class DeepgramService {
     );
 
     _listener!.stream.listen((result) {
-      print("DeepgramService - Transcript: ${result.transcript}");
       final transcript = result.transcript ?? '';
       _transcriptionController.add(transcript);
     }, onError: (err) {
