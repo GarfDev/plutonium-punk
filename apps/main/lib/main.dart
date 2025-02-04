@@ -61,8 +61,6 @@ class AudioVisualizerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Watch raw audio bytes
-    final rawAudioData = context.watch<List<int>>();
     // 2. Watch the latest transcription
     final transcript = context.watch<String>();
 
